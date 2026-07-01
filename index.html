@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Risk-Attitude Perception Ranking</title>
+<style>
+  :root{--bg:#f6f7f9;--card:#fff;--ink:#1f2733;--mut:#6b7785;--line:#e4e8ee;
+        --accentL:#2f6fed;--accentR:#e0792b;--ok:#1f9d57;--amber:#e0a800;--red:#d6453d;}
+  *{box-sizing:border-box}
+  body{margin:0;font:17px/1.6 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+       background:var(--bg);color:var(--ink)}
+  .wrap{max-width:1240px;margin:0 auto;padding:22px}
+  h1{font-size:28px;margin:.2em 0}
+  h2{font-size:23px;margin:.2em 0}
+  h3{font-size:18px}
+  .mut{color:var(--mut)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:22px;margin:16px 0;
+        box-shadow:0 1px 2px rgba(20,30,50,.04)}
+  button{font:inherit;cursor:pointer;border-radius:9px;border:1px solid var(--line);background:#fff;padding:11px 18px}
+  button:hover{border-color:#c4ccd6}
+  .primary{background:var(--accentL);color:#fff;border-color:var(--accentL)}
+  .primary:disabled{opacity:.45;cursor:not-allowed}
+  input,select{font:inherit;padding:8px;border:1px solid var(--line);border-radius:8px}
+  .row{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+  .panels{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:6px}
+  .panel{border:2px solid var(--line);border-radius:12px;padding:12px;background:#fcfdff}
+  .panel.L{border-color:var(--accentL)}
+  .panel.R{border-color:var(--accentR)}
+  .panel h3{margin:0 0 10px;font-size:18px}
+  .badge{display:inline-block;padding:3px 11px;border-radius:999px;color:#fff;font-size:14px;font-weight:600}
+  .bL{background:var(--accentL)} .bR{background:var(--accentR)}
+  .cards{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .tcard{border:1px solid var(--line);border-radius:9px;padding:11px;background:#fff;font-size:14px}
+  .tcard .cap{color:var(--mut);margin-top:6px;font-size:12.5px;line-height:1.45}
+  .choose{display:flex;gap:14px;justify-content:center;margin-top:18px;flex-wrap:wrap}
+  .choose button{min-width:230px;font-weight:600;font-size:17px;padding:14px 18px}
+  .gloss{background:#f1f5fb;border:1px solid #dfe8f6;border-radius:10px;padding:12px 14px;margin-top:12px;font-size:14px;line-height:1.55}
+  .gloss b{color:#28406b}
+  .progress{height:9px;background:var(--line);border-radius:6px;overflow:hidden;margin:10px 0}
+  .progress>i{display:block;height:100%;background:var(--accentL)}
+  table.v{border-collapse:collapse;width:100%;font-size:13px}
+  table.v th,table.v td{border:1px solid var(--line);padding:3px 6px;text-align:center}
+  table.v th{background:#f1f4f9;color:var(--mut);font-weight:600}
+  .pill{display:inline-block;padding:3px 9px;border-radius:6px;background:#eef1f6;font-size:13px;margin:2px}
+  .rankrow{display:flex;align-items:center;gap:12px;padding:11px 13px;border:1px solid var(--line);
+           border-radius:8px;margin:7px 0;background:#fff;font-size:16px}
+  .rankrow .h{cursor:grab;color:var(--mut);font-size:18px}
+  canvas{display:block;background:#fff;border:1px solid var(--line);border-radius:6px;width:100%;height:auto}
+  /* TPB vital gauges */
+  .vrow{display:grid;grid-template-columns:62px 1fr 104px;align-items:center;gap:9px;margin:7px 0}
+  .vlab{font-weight:700;font-size:13px}
+  .vtrack{position:relative;display:flex;height:16px;border-radius:8px;overflow:hidden;border:1px solid #e6eaf0}
+  .vtrack>span{height:100%}
+  .vmark{position:absolute;top:50%;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 2px #fff}
+  .vmark.s{width:9px;height:9px;background:#fff;border:2px solid #7a8696}
+  .vmark.e{width:13px;height:13px}
+  .vval{font-size:13px;text-align:right;color:#9aa7b5;white-space:nowrap}
+  .vval b{font-size:17px}
+  /* DOSPERT questionnaire */
+  .dq{display:grid;grid-template-columns:1fr 250px;gap:14px;align-items:center;padding:9px 0;border-top:1px solid var(--line)}
+  .dq .qt{font-size:14px}
+  .dq.att .qt{color:#b14b13;font-weight:600}
+  .dq .opts{display:flex;justify-content:space-between}
+  .dq .opts label{display:flex;flex-direction:column;align-items:center;font-size:11px;color:var(--mut);cursor:pointer;width:30px}
+  .dq .opts input{cursor:pointer;margin:0 0 2px}
+  .dscale{display:grid;grid-template-columns:1fr 250px;gap:14px;font-size:12px;color:var(--mut);padding-bottom:4px}
+  .dscale .ends{display:flex;justify-content:space-between}
+  .qmiss{background:#fff6f6}
+  .att-banner{background:#fff4e6;border:1px solid #f0c890;border-radius:8px;padding:8px 12px;margin:8px 0;font-weight:600;color:#9a5b18}
+  /* results */
+  .rank{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+  .rbar{display:grid;grid-template-columns:30px 200px 1fr;align-items:center;gap:12px;font-size:15px}
+  .rbar .pos{font-weight:700;color:var(--mut);text-align:right}
+  .rbar .nm{font-weight:600}
+  .rbar .track{background:#eef1f6;border-radius:6px;height:22px;position:relative;overflow:hidden}
+  .rbar .fill{height:100%;border-radius:6px}
+  .rbar.hu .nm{color:#b14b13}
+  .twocol{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .kvs{font-size:13px;color:var(--mut)}
+  .tag{font-size:13px;color:var(--mut)}
+  code{background:#eef1f6;padding:1px 5px;border-radius:5px}
+  /* blocking save overlay */
+  .overlay{position:fixed;inset:0;background:rgba(15,22,38,.82);display:flex;align-items:center;
+           justify-content:center;z-index:1000;padding:20px}
+  .modal{background:#fff;border-radius:14px;padding:30px 34px;max-width:520px;width:100%;text-align:center;
+         box-shadow:0 10px 40px rgba(0,0,0,.3)}
+  .modal h3{font-size:22px;margin:.3em 0}
+  .modal .cc{font-size:24px;font-weight:700;letter-spacing:1px;background:#eef1f6;border-radius:8px;
+             padding:8px 14px;display:inline-block;margin:8px 0}
+  .spinner{width:46px;height:46px;border:5px solid #e4e8ee;border-top-color:var(--accentL);
+           border-radius:50%;margin:4px auto 14px;animation:spin 1s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>How do these agents handle risk?</h1>
+  <p class="mut">A short study on how people perceive the risk-taking style of different decision-making agents.</p>
+  <div id="app"></div>
+</div>
+
+<script src="stimuli.js"></script>
+<script>
+// ----------------------------------------------------------------------------
+// CONFIG
+// ----------------------------------------------------------------------------
+const CONFIG = {
+  tasks: ["DSB", "FIP", "TPB"],   // which tasks to include
+  comparisonsPerTask: 10,         // distinct pairs shown per task per participant (of 21). Balanced across tasks
+                                  //   so each task gets its own clean group ranking (paper-style per-task design).
+  repeatFraction: 0.15,           // fraction of comparisons re-shown later (planned test-retest consistency check)
+  poolPerParticipant: 10,         // representative trials drawn per agent per participant (from the shipped 30)
+  shownPerScreen: 4,              // trials shown per agent in each comparison (rotates from the pool)
+  allowEqual: true,               // show an "about equal" option
+  doBrandRanking: true,           // optional brand-impression block at the end
+  // --- quality control / Prolific ---
+  minChoiceMs: 2500,              // choice buttons stay disabled this long (forces the rater to actually view the examples)
+  fastGraceMs: 600,               // clicking within this window AFTER buttons unlock = suspiciously fast
+  idleTrialMs: 60000,            // a single trial taking longer than this counts as idle
+  attentionChecks: 2,             // instructed-response comparison trials inserted into the plan
+  completionBaseURL: "https://app.prolific.com/submissions/complete?cc=",
+  completionCode: "CHANGEME-CC",  // <-- set to your Prolific study's completion code
+  dataPipeID: "MiHWh2GXObVZ",     // DataPipe experiment ID (saves to OSF project beq4y / component 7pwm9)
+  dataEndpoint: ""                // <-- OR a Google Apps Script /exec URL ("" = download only)
+};
+
+const TASK_INFO = {
+  DSB: {name:"Drone navigation",
+        desc:"Each agent flies a drone across a windy grid (gusts push it off course) toward a goal, avoiding walls. You see the actual route it flew.",
+        gloss:`<b>How to read each picture:</b>
+          <span class="term">🟢 start</span>
+          <span class="term">🟡 goal</span>
+          <span class="term">— blue line = route flown</span>
+          <span class="term">🔴 = a crash/collision</span>
+          <span class="term">⬛ = wall / building (obstacle)</span><br/>
+          <b>Wind</b>: random gusts shove the drone up/down. Each card lists the gust
+          <b>range</b> (e.g. <code>[−3, +3]</code>) and the <b>drift probability</b> = the chance a gust
+          hits on any step (e.g. <code>30%</code>) — a wider range and higher probability = a harder, riskier flight.<br/>
+          <b>perceived risk</b> = the agent's own 0–100 rating of how dangerous it felt the situation was.
+          A risk-taking agent pushes straight ahead despite wind/obstacles; a cautious one makes careful detours.`},
+  FIP: {name:"Investment allocation",
+        desc:"Each agent watches a market, then splits its money across three assets and reports how it allocated.",
+        gloss:`<b>How to read each picture:</b> the chart's y-axis is <b>% change from the start</b>
+          (the <b>0%</b> line). All three assets begin at 0% so you compare how much each <i>moves</i>:
+          <span class="term"><b style="color:#1f9d57">L</b> = low-volatility</span>
+          <span class="term"><b style="color:#e0a800">M</b> = medium</span>
+          <span class="term"><b style="color:#d6453d">H</b> = high-volatility (swings most)</span>.
+          The <b>volatility</b> numbers under each chart confirm which asset was riskiest (higher = riskier).
+          The colored bar shows the agent's <b>allocation</b> = % of money put into L / M / H.<br/>
+          <b>perceived risk</b> = the agent's own 0–100 rating of how risky the market felt.
+          Putting more into <b style="color:#d6453d">H</b> (the volatile asset) is more risk-taking.`},
+  TPB: {name:"Emergency triage",
+        desc:"Each agent monitors an emergency-room patient's vital signs, then assigns an urgency level.",
+        gloss:`<b>How to read each card:</b> the patient's age &amp; conditions, complaint, and the
+          <b>trend</b> of three vital signs over time
+          (<span class="term"><b style="color:#d6453d">HR</b> = heart rate, beats/min (normal ~60–100)</span>
+           <span class="term"><b style="color:#2f6fed">BP(sys)</b> = systolic blood pressure (normal ~90–140)</span>
+           <span class="term"><b style="color:#1f9d57">SpO2</b> = blood-oxygen % (normal ≥95)</span>).
+          Each vital is shown as a <b>gauge</b>: <b style="color:#1f9d57">green</b> = normal,
+          <b style="color:#e0a800">amber</b> = borderline, <b style="color:#d6453d">red</b> = dangerous.
+          The hollow dot is where the vital <i>started</i>, the solid dot is its <i>latest</i> value, and
+          <span style="font-weight:700">▲▼</span> shows the direction it moved — so a solid dot sitting in red,
+          or moving toward red, means the patient is sick / deteriorating.<br/>
+          <b>ESI = Emergency Severity Index</b>, the urgency the agent assigned (1 = sickest → 5 = least sick):<br/>
+          &nbsp;&nbsp;<b>1</b> immediate life-saving intervention (cardiac arrest, severe respiratory distress, unresponsive) ·
+          <b>2</b> high-risk / severe pain / altered mental status — must be seen quickly ·
+          <b>3</b> stable but needs ≥2 resources (labs, imaging, IV) ·
+          <b>4</b> stable, needs 1 resource (wound care, simple X-ray) ·
+          <b>5</b> stable, no resources beyond exam.<br/>
+          <b>perceived risk</b> = the agent's own 0–100 rating of how serious the patient was.
+          Assigning a <i>less</i>-urgent ESI to a sick / deteriorating patient is more risk-taking.`}
+};
+
+// Paper's AUC-based risk-attitude ranking (Fig. 5a, mean across the 3 tasks),
+// ordered most risk-taking -> most risk-averse.
+const PAPER_RANK = ["gpt","human","qwen","gemini","deepseek","sonnet","grok"];
+// Grok-4 failed the upstream intra-consistency check -> shown with an asterisk.
+const STAR = {grok:" *"};
+
+const S = window.STIMULI;
+const DISPLAY = S.meta.entities;
+
+// ----------------------------------------------------------------------------
+// state
+// ----------------------------------------------------------------------------
+const state = { subjectId:"", demographics:null, plan:[], idx:0, responses:[], brand:[], tStart:0,
+                quality:{}, prolific:{}, hiddenMs:0, blurCount:0, attn:[] };
+// --- Prolific URL params + tab-visibility / idle tracking ---
+(function(){
+  const q=new URLSearchParams(location.search);
+  state.prolific={pid:q.get("PROLIFIC_PID")||"", study:q.get("STUDY_ID")||"", session:q.get("SESSION_ID")||""};
+  // authoritative unique ID: Prolific PID if present, else an auto-generated test ID (no manual entry = no duplicates)
+  state.subjectId = state.prolific.pid || ("anon_"+Math.random().toString(36).slice(2,8)+"_"+Date.now().toString(36));
+  if(q.get("demo")){ CONFIG.comparisonsPerTask=2; CONFIG.attentionChecks=0; CONFIG.minChoiceMs=200; }  // fast preview only
+  let hiddenAt=null;
+  document.addEventListener("visibilitychange",()=>{
+    if(document.hidden){hiddenAt=performance.now();state.blurCount++;}
+    else if(hiddenAt!=null){state.hiddenMs+=performance.now()-hiddenAt;hiddenAt=null;}
+  });
+  window.addEventListener("beforeunload",(e)=>{
+    const midTask = state.idx>0 && state.idx<state.plan.length;
+    const savingUnfinished = state.onDone && !state.saved;
+    if(midTask || savingUnfinished){e.preventDefault();e.returnValue="";}
+  });
+})();
+const app = document.getElementById("app");
+const rnd = (n)=>Math.floor(Math.random()*n);
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=rnd(i+1);[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+// ---- seeded sampling (per participant): draw a representative subset per agent ----
+function hashStr(s){let h=2166136261>>>0;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function rngFrom(){return mulberry32(hashStr([...arguments].join("|")));}
+function shuffleSeeded(arr,rng){arr=arr.slice();for(let i=arr.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}return arr;}
+// Latin-hypercube pick: sort by difficulty proxy, split into k blocks, 1 random per block
+function lhsPick(items,k,rng){
+  const s=items.slice().sort((a,b)=>(a.proxy||0)-(b.proxy||0)), n=s.length;
+  if(n<=k) return shuffleSeeded(s,rng);
+  const out=[];
+  for(let i=0;i<k;i++){const lo=Math.floor(i*n/k),hi=Math.floor((i+1)*n/k);
+    out.push(s[lo+Math.floor(rng()*Math.max(1,hi-lo))]);}
+  return out;
+}
+function tpbPick(items,k,rng){           // keep a fixed severity mix (≈5/3/2 scaled to k)
+  const a=Math.round(k*0.5), b=Math.round(k*0.3), want={STABLE:a,HR:b,LSI:Math.max(0,k-a-b)};
+  const by={}; items.forEach(t=>{(by[t.severity]=by[t.severity]||[]).push(t);});
+  let out=[];
+  for(const s of ["STABLE","HR","LSI"]) out=out.concat(shuffleSeeded(by[s]||[],rng).slice(0,want[s]));
+  if(out.length<k){const rest=shuffleSeeded(items.filter(t=>!out.includes(t)),rng);out=out.concat(rest.slice(0,k-out.length));}
+  return out.slice(0,k);
+}
+function drawK(items,k,task,rng){return task==="TPB"?tpbPick(items,k,rng):lhsPick(items,k,rng);}
+// per-participant representative pool (drawn once from the shipped 30); different per participant
+function buildPools(){
+  state.pools={};
+  for(const task of CONFIG.tasks){state.pools[task]={};
+    for(const ent of Object.keys(S.stimuli[task])){
+      const pool=S.stimuli[task][ent]||[];
+      state.pools[task][ent]=drawK(pool,Math.min(CONFIG.poolPerParticipant,pool.length),task,
+                                   rngFrom(state.subjectId,"pool",task,ent));
+    }}
+}
+// trials shown for one agent in one comparison (rotates/varies via the pair key)
+function shownFor(task,ent,pairKey){
+  const pool=(state.pools[task]||{})[ent]||[];
+  return drawK(pool,Math.min(CONFIG.shownPerScreen,pool.length),task,
+               rngFrom(state.subjectId,"show",task,ent,pairKey));
+}
+
+// ----------------------------------------------------------------------------
+// plan
+// ----------------------------------------------------------------------------
+function buildPlan(){
+  let combos=[];
+  // balanced per-task allocation: sample comparisonsPerTask distinct pairs from each task's 21,
+  // so every task yields its own group ranking (mirrors the paper's per-task AUC design).
+  for(const task of CONFIG.tasks){
+    const byEnt=S.stimuli[task];
+    const ents=Object.keys(byEnt).filter(e=>byEnt[e]&&byEnt[e].length);
+    const pairs=[];
+    for(let i=0;i<ents.length;i++)for(let j=i+1;j<ents.length;j++) pairs.push({task,e1:ents[i],e2:ents[j]});
+    shuffle(pairs);
+    combos=combos.concat(pairs.slice(0, Math.min(CONFIG.comparisonsPerTask, pairs.length)));
+  }
+  shuffle(combos);                                   // interleave tasks in presentation
+  for(const c of combos){ if(Math.random()<.5){const t=c.e1;c.e1=c.e2;c.e2=t;} }
+  // planned repeated pairs (test-retest consistency): clone a fraction, re-flip side, place later
+  const nRep=Math.round(CONFIG.repeatFraction*combos.length);
+  const repPool=shuffle(combos.slice()).slice(0,nRep);
+  for(const src of repPool){
+    const c={task:src.task, e1:src.e1, e2:src.e2, repeat:true};
+    if(Math.random()<.5){const t=c.e1;c.e1=c.e2;c.e2=t;}   // independent side
+    const pos=Math.floor(combos.length*0.5)+rnd(Math.max(1,combos.length-Math.floor(combos.length*0.5)));
+    combos.splice(pos,0,c);
+  }
+  // splice in instructed-response attention checks at random (non-edge) positions
+  for(let i=0;i<CONFIG.attentionChecks;i++){
+    const task=CONFIG.tasks[rnd(CONFIG.tasks.length)];
+    const e=shuffle(Object.keys(S.stimuli[task]).slice());
+    const a={attention:true, task, e1:e[0], e2:e[1], instruct:(Math.random()<.5?"left":"right")};
+    const pos=1+rnd(Math.max(1,combos.length-1));
+    combos.splice(pos,0,a);
+  }
+  return combos;
+}
+
+// ----------------------------------------------------------------------------
+// screens
+// ----------------------------------------------------------------------------
+function screenConsent(){
+  app.innerHTML="";
+  const c=el("div","card");
+  c.innerHTML=`<h2>Consent to participate</h2>
+    <p>You are invited to take part in a research study on how people perceive the decision-making
+    style of different agents. The study takes about <b>12–15 minutes</b>. You will fill in a short
+    questionnaire and then compare pairs of agents.</p>
+    <ul class="mut">
+      <li>Participation is voluntary; you may stop at any time by closing the tab.</li>
+      <li>Responses are <b>anonymous</b>; no personally identifying information is collected beyond
+          your Prolific ID (used only to grant payment).</li>
+      <li>There are no anticipated risks. Data are used for academic research only.</li>
+      <li>Questions: contact the research team at the email on the Prolific listing.</li>
+    </ul>
+    <p class="mut" style="font-size:13px">[IRB protocol # / PI name to be inserted before launch.]</p>
+    <label style="display:block;margin:10px 0"><input type="checkbox" id="consent"/>
+      I am 18 or older and I consent to participate.</label>
+    <div class="row"><button class="primary" id="cgo">Continue</button>
+      <span class="mut" id="cwarn"></span></div>`;
+  app.appendChild(c);
+  document.getElementById("cgo").onclick=()=>{
+    if(!document.getElementById("consent").checked){
+      document.getElementById("cwarn").textContent="Please confirm consent to continue.";return;}
+    screenIntro();
+  };
+}
+
+function screenIntro(){
+  app.innerHTML="";
+  const c=el("div","card");
+  c.innerHTML=`<h2>Welcome</h2>
+   <p>You will see pairs of anonymous agents (<span class="badge bL">Agent ①</span> vs
+   <span class="badge bR">Agent ②</span>). For each pair, a few examples of their behavior in the
+   <b>same kind of situation</b> are shown. Your job: judge <b>which agent behaves in a more
+   <u>risk-taking</u> (vs. risk-averse / cautious) way</b>, based only on what you see.</p>
+   <p class="mut">There is no right answer — we want your impression. It takes about
+   ${Math.max(8,Math.round(CONFIG.comparisonsPerTask*CONFIG.tasks.length*0.4)+5)} minutes.</p>
+   <p class="mut" style="font-size:13px">${state.prolific.pid
+       ? `Your Prolific ID (<b>${state.prolific.pid}</b>) was detected and will be used automatically.`
+       : `No Prolific ID found in the link — a temporary test ID (<b>${state.subjectId}</b>) was generated for this session.`}</p>
+   <div class="row"><button class="primary" id="go">Continue</button></div>`;
+  app.appendChild(c);
+  document.getElementById("go").onclick=()=> screenDemographics();
+}
+
+// DOSPERT-R (Blais & Weber, 2006) risk-taking subscale: 30 items, 5 domains, rated 1-7.
+const DOSPERT = [
+  {d:"fin",  t:"Betting a day's income at the horse races."},
+  {d:"fin",  t:"Investing 10% of your annual income in a moderate growth mutual fund."},
+  {d:"fin",  t:"Betting a day's income at a high-stake poker game."},
+  {d:"fin",  t:"Investing 5% of your annual income in a very speculative stock."},
+  {d:"fin",  t:"Betting a day's income on the outcome of a sporting event."},
+  {d:"fin",  t:"Investing 10% of your annual income in a new business venture."},
+  {d:"health",t:"Drinking heavily at a social function."},
+  {d:"health",t:"Engaging in unprotected sex."},
+  {d:"health",t:"Driving a car without wearing a seat belt."},
+  {d:"health",t:"Riding a motorcycle without a helmet."},
+  {d:"health",t:"Sunbathing without sunscreen."},
+  {d:"health",t:"Walking home alone at night in an unsafe area of town."},
+  {d:"rec",  t:"Going camping in the wilderness."},
+  {d:"rec",  t:"Going down a ski run that is beyond your ability."},
+  {d:"rec",  t:"Going whitewater rafting at high water in the spring."},
+  {d:"rec",  t:"Taking a skydiving class."},
+  {d:"rec",  t:"Bungee jumping off a tall bridge."},
+  {d:"rec",  t:"Piloting a small plane."},
+  {d:"eth",  t:"Taking some questionable deductions on your income tax return."},
+  {d:"eth",  t:"Having an affair with a married man/woman."},
+  {d:"eth",  t:"Passing off somebody else's work as your own."},
+  {d:"eth",  t:"Revealing a friend's secret to someone else."},
+  {d:"eth",  t:"Leaving your young children alone at home while running an errand."},
+  {d:"eth",  t:"Not returning a wallet you found that contains $200."},
+  {d:"soc",  t:"Admitting that your tastes are different from those of a friend."},
+  {d:"soc",  t:"Disagreeing with an authority figure on a major issue."},
+  {d:"soc",  t:"Choosing a career that you truly enjoy over a more secure one."},
+  {d:"soc",  t:"Speaking your mind about an unpopular issue in a meeting at work."},
+  {d:"soc",  t:"Moving to a city far away from your extended family."},
+  {d:"soc",  t:"Starting a new career in your mid-thirties."},
+];
+const DOSPERT_DOM={fin:"Financial",health:"Health/Safety",rec:"Recreational",eth:"Ethical",soc:"Social"};
+const DOSPERT_ORDER=(function(){
+  const by={}; DOSPERT.forEach((it,i)=>{(by[it.d]=by[it.d]||[]).push(i);});
+  const doms=Object.keys(by),out=[];
+  for(let r=0;r<6;r++) for(const d of doms) if(by[d][r]!==undefined) out.push(by[d][r]);
+  return out;
+})();
+const ATT_ITEM={t:"This is an attention check — please select 4 (the middle option) for this item.", val:4};
+const ATT_POS=14;   // where the attention item appears in the list
+
+// Exploratory (non-validated) AI / situational-risk module — scored SEPARATELY from DOSPERT.
+// 1 = strongly disagree ... 7 = strongly agree.
+const AIRISK = [
+  "I would let an AI system make important decisions on my behalf in high-stakes situations.",
+  "When information is incomplete, I prefer to act decisively rather than wait for more certainty.",
+  "I would rather an AI assistant be bold and decisive than cautious and conservative.",
+  "In uncertain situations, I am comfortable taking actions that could go badly wrong if they also offer a chance of a much better outcome.",
+  "I trust an AI to weigh risks about as well as a human expert would.",
+  "I am willing to rely on an AI's judgment even when I cannot see its reasoning.",
+];
+
+function screenDemographics(){
+  app.innerHTML="";
+  const c=el("div","card");
+  // questionnaire rows, with the attention item spliced in
+  let qs=""; let shown=0;
+  DOSPERT_ORDER.forEach((idx,n)=>{
+    if(shown===ATT_POS){
+      let o=""; for(let v=1;v<=7;v++) o+=`<label><input type="radio" name="att" value="${v}"/>${v}</label>`;
+      qs+=`<div class="dq att" id="attrow"><div class="qt">★ ${ATT_ITEM.t}</div><div class="opts">${o}</div></div>`;
+      shown++;
+    }
+    let opts=""; for(let v=1;v<=7;v++) opts+=`<label><input type="radio" name="dq${idx}" value="${v}"/>${v}</label>`;
+    qs+=`<div class="dq" id="dqrow${idx}"><div class="qt">${++shown}. ${DOSPERT[idx].t}</div>
+         <div class="opts">${opts}</div></div>`;
+  });
+  c.innerHTML=`<h2>Before we start — a short questionnaire</h2>
+    <p class="mut">All answers are anonymous and used only to interpret group results.</p>
+    <div style="display:grid;grid-template-columns:1fr;gap:14px;max-width:560px">
+      <div><label><b>Age</b></label><br/>
+        <input id="d_age" type="number" min="10" max="100" style="width:120px" placeholder="years"/></div>
+      <div><label><b>Gender</b></label><br/>
+        <select id="d_gender"><option value="">— select —</option><option>Female</option>
+          <option>Male</option><option>Non-binary</option><option>Prefer not to say</option></select></div>
+      <div><label><b>How often do you use AI tools</b> (ChatGPT, Claude, etc.)?</label><br/>
+        <select id="d_ai">
+          <option value="">— select —</option><option>Never</option><option>Rarely</option>
+          <option>Monthly</option><option>Weekly</option><option>Daily</option>
+          <option>Several times a day</option></select></div>
+      <div><label><b>In general, how willing are you to take risks?</b>
+        &nbsp;<span class="mut">(0 = avoid, 10 = fully prepared)</span></label><br/>
+        <input id="d_risk" type="range" min="0" max="10" value="5" style="width:300px"
+          oninput="document.getElementById('d_risk_v').textContent=this.value"/> <b id="d_risk_v">5</b></div>
+    </div>
+    <h3 style="margin-top:22px">Risk-taking questionnaire (DOSPERT)</h3>
+    <p class="mut" style="margin-top:2px">For each activity, rate <b>how likely you would be to engage in it</b>
+      — <b>1 = extremely unlikely</b>, <b>7 = extremely likely</b>.</p>
+    <div class="dscale"><div></div><div class="ends"><span>1<br/>unlikely</span><span>7<br/>likely</span></div></div>
+    <div id="dqs">${qs}</div>
+    <h3 style="margin-top:24px">A few questions about AI &amp; decisions</h3>
+    <p class="mut" style="margin-top:2px">Rate how much you agree —
+      <b>1 = strongly disagree</b>, <b>7 = strongly agree</b>.</p>
+    <div class="dscale"><div></div><div class="ends"><span>1<br/>disagree</span><span>7<br/>agree</span></div></div>
+    <div id="aiqs">${AIRISK.map((t,i)=>{
+      let o=""; for(let v=1;v<=7;v++) o+=`<label><input type="radio" name="ai${i}" value="${v}"/>${v}</label>`;
+      return `<div class="dq" id="airow${i}"><div class="qt">${i+1}. ${t}</div><div class="opts">${o}</div></div>`;
+    }).join("")}</div>
+    <div class="row" style="margin-top:18px">
+      <button class="primary" id="dgo">Start the experiment</button>
+      <span class="mut" id="dwarn"></span></div>`;
+  app.appendChild(c);
+  document.getElementById("dgo").onclick=()=>{
+    const age=document.getElementById("d_age").value;
+    const gender=document.getElementById("d_gender").value;
+    const ai=document.getElementById("d_ai").value;
+    const resp={}; let missing=[];
+    DOSPERT.forEach((it,idx)=>{const s=document.querySelector(`input[name="dq${idx}"]:checked`);
+      if(s) resp[idx]=Number(s.value); else missing.push("dqrow"+idx);});
+    const attSel=document.querySelector('input[name="att"]:checked');
+    if(!attSel) missing.push("attrow");
+    const aiResp={};
+    AIRISK.forEach((t,i)=>{const s=document.querySelector(`input[name="ai${i}"]:checked`);
+      if(s) aiResp[i]=Number(s.value); else missing.push("airow"+i);});
+    document.querySelectorAll(".dq").forEach(r=>r.classList.remove("qmiss"));
+    if(!age||!ai||missing.length){
+      missing.forEach(id=>document.getElementById(id).classList.add("qmiss"));
+      document.getElementById("dwarn").textContent =
+        (!age||!ai) ? "Please fill in age and AI-use frequency." : `Please answer all questions (${missing.length} left).`;
+      if(missing.length) document.getElementById(missing[0]).scrollIntoView({behavior:"smooth",block:"center"});
+      return;
+    }
+    // score DOSPERT overall + per-domain; QC: attention + straight-lining
+    const byD={},cnt={}; DOSPERT.forEach((it,idx)=>{byD[it.d]=(byD[it.d]||0)+resp[idx];cnt[it.d]=(cnt[it.d]||0)+1;});
+    const domains={}; let all=0; for(const d in byD){domains[DOSPERT_DOM[d]]=+(byD[d]/cnt[d]).toFixed(2);all+=byD[d];}
+    const vals=Object.values(resp), mean=all/vals.length;
+    const sd=Math.sqrt(vals.reduce((s,v)=>s+(v-mean)**2,0)/vals.length);
+    state.quality.dospertAttentionPass = Number(attSel.value)===ATT_ITEM.val;
+    state.quality.dospertStraightlining = sd<0.5;     // near-zero variance => careless
+    const aiVals=Object.values(aiResp), aiMean=aiVals.reduce((s,v)=>s+v,0)/aiVals.length;
+    state.demographics={age:Number(age), gender, aiUse:ai,
+      soepRisk:Number(document.getElementById("d_risk").value),
+      dospert:{responses:resp, overall:+(all/DOSPERT.length).toFixed(2), domains, sd:+sd.toFixed(2)},
+      aiRisk:{responses:aiResp, mean:+aiMean.toFixed(2)}};   // exploratory, separate from DOSPERT
+    buildPools();
+    state.plan=buildPlan(); state.idx=0; state.tStart=performance.now();
+    screenCompare();
+  };
+}
+
+function afterCompare(){
+  return CONFIG.doBrandRanking ? screenBrand() : screenDone();
+}
+function screenCompare(){
+  const c=state.plan[state.idx];
+  if(!c){ return afterCompare(); }
+  app.innerHTML="";
+  const head=el("div","card");
+  const ti=TASK_INFO[c.task];
+  const pct=Math.round(100*state.idx/state.plan.length);
+  head.innerHTML=`<div class="row" style="justify-content:space-between">
+      <div style="font-size:20px"><b>${ti.name}</b>
+        &nbsp;<span class="tag">${CONFIG.shownPerScreen} example trials per agent</span></div>
+      <div class="mut">${state.idx+1} / ${state.plan.length}</div></div>
+    <div class="progress"><i style="width:${pct}%"></i></div>
+    <p style="margin:.3em 0 0">${ti.desc}</p>
+    <div class="gloss">${ti.gloss}</div>`;
+  app.appendChild(head);
+
+  const pairKey=[c.e1,c.e2].sort().join("_");
+  const panels=el("div","panels");
+  panels.appendChild(buildPanel("L","Agent ①",c.task,shownFor(c.task,c.e1,pairKey)));
+  panels.appendChild(buildPanel("R","Agent ②",c.task,shownFor(c.task,c.e2,pairKey)));
+  app.appendChild(panels);
+
+  const q=el("div","card");
+  q.innerHTML = c.attention
+    ? `<div class="att-banner">⚠ Attention check: please click
+         “${c.instruct==="left"?"Agent ① is more risk-taking":"Agent ② is more risk-taking"}”.</div>`
+    : `<div style="text-align:center;font-weight:600;margin-bottom:6px">
+         Which agent behaves in a more risk-taking way?</div>`;
+  const ch=el("div","choose");
+  const bL=btn("⬅ Agent ① is more risk-taking","primary",()=>record(c,"left"));
+  const bR=btn("Agent ② is more risk-taking ➡","primary",()=>record(c,"right"));
+  const bE=CONFIG.allowEqual&&!c.attention ? btn("About the same","",()=>record(c,"equal")) : null;
+  ch.appendChild(bL); if(bE) ch.appendChild(bE); ch.appendChild(bR);
+  q.appendChild(ch); app.appendChild(q);
+  // careless-speed guard: disable choices for a short minimum view time
+  const btns=[bL,bR,bE].filter(Boolean); btns.forEach(b=>b.disabled=true);
+  const note=el("div","mut"); note.style.cssText="text-align:center;margin-top:6px;font-size:13px";
+  note.textContent="(please review the examples…)"; q.appendChild(note);
+  setTimeout(()=>{btns.forEach(b=>b.disabled=false); note.textContent="";}, CONFIG.minChoiceMs);
+  state.tCard=performance.now();
+}
+
+function record(c,choice){
+  const rt=Math.round(performance.now()-state.tCard);
+  if(c.attention){
+    state.attn.push({task:c.task, instruct:c.instruct, choice, pass:choice===c.instruct, rt_ms:rt});
+  } else {
+    state.responses.push({
+      task:c.task, leftEntity:c.e1, rightEntity:c.e2,
+      choice, chosenEntity:(choice==="left"?c.e1:choice==="right"?c.e2:null),
+      repeat:!!c.repeat, rt_ms:rt, fast:rt<(CONFIG.minChoiceMs+CONFIG.fastGraceMs), idle:rt>CONFIG.idleTrialMs
+    });
+  }
+  state.idx++; window.scrollTo(0,0); screenCompare();
+}
+
+// ----------------------------------------------------------------------------
+// panel + per-task renderers
+// ----------------------------------------------------------------------------
+function buildPanel(side,label,task,trials){
+  const p=el("div","panel "+side);
+  p.innerHTML=`<h3><span class="badge ${side==='L'?'bL':'bR'}">${label}</span></h3>`;
+  const cards=el("div","cards");
+  (trials||[]).forEach(t=>cards.appendChild(renderTrial(task,t)));
+  p.appendChild(cards);
+  return p;
+}
+
+function renderTrial(task,t){
+  const card=el("div","tcard");
+  if(task==="DSB") renderDSB(card,t);
+  else if(task==="FIP") renderFIP(card,t);
+  else renderTPB(card,t);
+  return card;
+}
+
+function el(tag,cls){const e=document.createElement(tag);if(cls)e.className=cls;return e;}
+function btn(txt,cls,fn){const b=document.createElement("button");b.textContent=txt;if(cls)b.className=cls;b.onclick=fn;return b;}
+
+// --- DSB: grid + path + inferred obstacles + wind ---
+function renderDSB(card,t){
+  const b=t.behavior, cw=22, rows=b.rows, cols=b.cols;
+  const cv=document.createElement("canvas"); cv.width=cols*cw+1; cv.height=rows*cw+1;
+  const g=cv.getContext("2d");
+  g.strokeStyle="#eef1f6";
+  for(let x=0;x<=cols;x++){g.beginPath();g.moveTo(x*cw+.5,0);g.lineTo(x*cw+.5,rows*cw);g.stroke();}
+  for(let y=0;y<=rows;y++){g.beginPath();g.moveTo(0,y*cw+.5);g.lineTo(cols*cw,y*cw+.5);g.stroke();}
+  // inferred obstacles (black blocks around the trajectory)
+  g.fillStyle="#222a36";
+  (b.walls||[]).forEach(w=>g.fillRect(w[1]*cw+1,w[0]*cw+1,cw-1,cw-1));
+  const cc=(c)=>c*cw+cw/2, cr=(r)=>r*cw+cw/2;
+  // path
+  g.strokeStyle="#2f6fed"; g.lineWidth=3; g.beginPath();
+  b.path.forEach((s,i)=>{const x=cc(s[1]),y=cr(s[0]); i?g.lineTo(x,y):g.moveTo(x,y);}); g.stroke();
+  // collisions
+  g.fillStyle="#d6453d";
+  b.path.forEach(s=>{ if(s[3]){g.beginPath();g.arc(cc(s[1]),cr(s[0]),4.5,0,7);g.fill();} });
+  // start + goal
+  const s0=b.path[0]; g.fillStyle="#1f9d57"; g.beginPath();g.arc(cc(s0[1]),cr(s0[0]),5,0,7);g.fill();
+  g.fillStyle="#e0a800"; g.beginPath();g.arc(cc(b.goal[1]),cr(b.goal[0]),5.5,0,7);g.fill();
+  card.appendChild(cv);
+  const w=b.wind||{};
+  card.insertAdjacentHTML("beforeend",
+    `<div class="cap">🌬 wind range <b>[${w.min}, +${w.max}]</b> ·
+       drift probability = <b>${Math.round((w.prob||0)*100)}%</b><br/>
+     perceived risk <b>${fmt(t.B_C)}</b> · steps ${b.n_steps} · collisions ${b.n_coll} ·
+     ${b.end_reason==="goal"?"reached goal ✓":"ran out / stopped"}</div>`);
+}
+
+// "nice" round tick values covering [lo,hi] (~4-6 ticks)
+function niceTicks(lo,hi){
+  const span=(hi-lo)||1, raw=span/4, pw=Math.pow(10,Math.floor(Math.log10(raw)));
+  const step=[1,2,2.5,5,10].map(s=>s*pw).find(s=>s>=raw)||10*pw;
+  const start=Math.floor(lo/step)*step, end=Math.ceil(hi/step)*step;   // bracket [lo,hi]
+  const out=[]; for(let v=start; v<=end+1e-9; v+=step) out.push(Math.round(v*100)/100);
+  return out.length>1?out:[lo,hi];
+}
+
+// --- FIP: % price lines (per-chart adaptive % y-axis) + allocation bar ---
+function renderFIP(card,t){
+  const b=t.behavior, W=360,H=210, padL=40, padR=22, padT=8, padB=8;
+  const cv=document.createElement("canvas");cv.width=W;cv.height=H;const g=cv.getContext("2d");
+  const series={L:"#1f9d57",M:"#e0a800",H:"#d6453d"};
+  // adaptive range fitting exactly the three curves in THIS chart (in % from start), 0% always shown
+  let mn=Infinity,mx=-Infinity;
+  for(const k in series)(b.prices[k]||[]).forEach(v=>{mn=Math.min(mn,v-100);mx=Math.max(mx,v-100);});
+  if(!isFinite(mn)){mn=-1;mx=1;}
+  const padv=((mx-mn)||2)*0.12;
+  const ticks=niceTicks(Math.min(0,mn-padv), Math.max(0,mx+padv));
+  const lo=ticks[0], hi=ticks[ticks.length-1];
+  const sy=(p)=>H-padB-(p-lo)/((hi-lo)||1)*(H-padT-padB);
+  const sx=(i,n)=>padL+i*(W-padL-padR)/(n-1);
+  // % gridlines + axis labels
+  g.font="11px sans-serif";g.textBaseline="middle";
+  for(const gp of ticks){
+    const y=sy(gp);
+    g.strokeStyle = Math.abs(gp)<1e-9 ? "#c3ccd8" : "#eef1f6"; g.lineWidth = Math.abs(gp)<1e-9?1.4:1;
+    g.beginPath();g.moveTo(padL,y);g.lineTo(W-2,y);g.stroke();
+    g.fillStyle="#8a96a6";g.textAlign="right";
+    g.fillText((gp>0?"+":"")+gp+"%", padL-3, y);
+  }
+  const sd=(a)=>{a=(a||[]).filter(x=>x!=null);if(a.length<2)return 0;
+    const m=a.reduce((x,y)=>x+y,0)/a.length;return Math.sqrt(a.reduce((s,v)=>s+(v-m)**2,0)/a.length);};
+  for(const k in series){const arr=b.prices[k]||[];if(arr.length<2)continue;
+    g.strokeStyle=series[k];g.lineWidth=2.2;g.beginPath();
+    arr.forEach((v,i)=>{const x=sx(i,arr.length),y=sy(v-100);i?g.lineTo(x,y):g.moveTo(x,y);});g.stroke();
+    g.fillStyle=series[k];g.font="bold 13px sans-serif";g.textAlign="left";
+    g.fillText(k, Math.min(W-12,sx(arr.length-1,arr.length)+4), sy(arr[arr.length-1]-100));}
+  card.appendChild(cv);
+  const vL=sd(b.prices.L),vM=sd(b.prices.M),vH=sd(b.prices.H);
+  // allocation stacked bar
+  const a=b.alloc, tot=(a.L||0)+(a.M||0)+(a.H||0)||1;
+  const bar=el("div");bar.style.cssText="display:flex;height:20px;border-radius:5px;overflow:hidden;margin-top:7px";
+  [["L","#1f9d57"],["M","#e0a800"],["H","#d6453d"]].forEach(([k,col])=>{
+    const seg=el("div");seg.style.cssText=`width:${100*(a[k]||0)/tot}%;background:${col}`;bar.appendChild(seg);});
+  card.appendChild(bar);
+  card.insertAdjacentHTML("beforeend",
+    `<div class="cap">volatility
+       <b style="color:#1f9d57">L ${vL.toFixed(1)}%</b> ·
+       <b style="color:#e0a800">M ${vM.toFixed(1)}%</b> ·
+       <b style="color:#d6453d">H ${vH.toFixed(1)}%</b>
+       <span style="opacity:.6">(higher = riskier asset)</span><br/>
+     allocation L/M/<b>H</b> = ${a.L}/${a.M}/<b>${a.H}</b> ·
+     perceived risk <b>${fmt(t.B_C)}</b></div>`);
+}
+
+// vital-sign GAUGE: clinical zones (green normal / amber borderline / red danger) with a
+// hollow "start" dot and a bold "current" dot, plus explicit start->end value + trend arrow.
+const VITAL_CFG = {
+  HR:  {lo:40,hi:160,unit:"",eps:3,
+        bands:[[40,50,"red"],[50,60,"amber"],[60,100,"green"],[100,130,"amber"],[130,160,"red"]]},
+  BP:  {lo:70,hi:200,unit:"",eps:5,
+        bands:[[70,90,"red"],[90,100,"amber"],[100,140,"green"],[140,180,"amber"],[180,200,"red"]]},
+  SpO2:{lo:80,hi:100,unit:"%",eps:1,
+        bands:[[80,90,"red"],[90,95,"amber"],[95,100,"green"]]},
+};
+const ZONE  = {green:"#1f9d57", amber:"#e0a800", red:"#d6453d"};
+const ZTINT = {green:"#dff0e6", amber:"#fbeecb", red:"#f8dcd9"};
+function vitalRow(label,vals,cfg){
+  vals=(vals||[]).filter(v=>v!==null&&v!==undefined);
+  if(!vals.length) return "";
+  const lo=cfg.lo,hi=cfg.hi, s=vals[0], e=vals[vals.length-1];
+  const pos=v=>Math.max(0,Math.min(100,(v-lo)/(hi-lo)*100));
+  const zcol=v=>{for(const [a,b,c] of cfg.bands) if(v>=a&&v<b) return c; return cfg.bands[cfg.bands.length-1][2];};
+  const segs=cfg.bands.map(([a,b,c])=>`<span style="width:${(b-a)/(hi-lo)*100}%;background:${ZTINT[c]}"></span>`).join("");
+  const ec=ZONE[zcol(e)];
+  const arrow = e>s+cfg.eps ? "▲" : (e<s-cfg.eps ? "▼" : "▬");
+  return `<div class="vrow">
+    <div class="vlab">${label}</div>
+    <div class="vtrack">${segs}
+      <div class="vmark s" style="left:${pos(s)}%"></div>
+      <div class="vmark e" style="left:${pos(e)}%;background:${ec}"></div>
+    </div>
+    <div class="vval">${s}&nbsp;→&nbsp;<b style="color:${ec}">${e}${cfg.unit}</b>
+      <span style="color:${ec};font-weight:700">${arrow}</span></div>
+  </div>`;
+}
+
+// --- TPB: patient + vital-sign trends + decision ---
+function renderTPB(card,t){
+  const b=t.behavior, p=b.patient||{};
+  const com=(p.comorbid&&p.comorbid.length)?p.comorbid.join(", "):"no comorbidities";
+  const tr=b.trend||[];
+  card.innerHTML=`<div><b>Age ${p.age??"?"}</b> · ${com}</div>
+    <div class="tag" style="margin:2px 0">“${b.cc||""}”  ·  observed ${b.n_ticks} ticks</div>`;
+  card.insertAdjacentHTML("beforeend",
+     vitalRow("HR", tr.map(x=>x.HR), VITAL_CFG.HR)
+   + vitalRow("BP(sys)", tr.map(x=>x.BP), VITAL_CFG.BP)
+   + vitalRow("SpO2", tr.map(x=>x.SpO2), VITAL_CFG.SpO2));
+  const flags=(b.final_flags||[]).map(f=>`<span class="pill" style="background:#fde8e6">${f}</span>`).join("");
+  card.insertAdjacentHTML("beforeend",
+    `${flags?`<div style="margin:5px 0 2px">${flags}</div>`:""}
+     <div class="cap">decision <b>ESI ${b.ESI}</b> (1=most urgent … 5=least) ·
+      perceived risk <b>${fmt(t.B_C)}</b></div>`);
+}
+
+function fmt(v){return (v===null||v===undefined)?"–":v;}
+
+// ----------------------------------------------------------------------------
+// optional brand-impression ranking
+// ----------------------------------------------------------------------------
+function screenBrand(){
+  app.innerHTML="";
+  const c=el("div","card");
+  c.innerHTML=`<h2>Optional: your impression of the named models</h2>
+    <p class="mut">Independent of what you just saw — based on your general impression of these AI models,
+    drag to order them from <b>most risk-taking (top)</b> to <b>most cautious (bottom)</b>.
+    You can skip this.</p>`;
+  const list=el("div"); list.id="brandlist";
+  const ents=shuffle(Object.keys(DISPLAY).filter(e=>e!=="human"));
+  ents.forEach(e=>{
+    const r=el("div","rankrow"); r.draggable=true; r.dataset.e=e;
+    r.innerHTML=`<span class="h">⠿</span><span>${DISPLAY[e]}</span>`;
+    addDrag(r,list); list.appendChild(r);
+  });
+  c.appendChild(list);
+  const row=el("div","row");
+  row.appendChild(btn("Submit ranking","primary",()=>{
+    state.brand=[...list.children].map(x=>x.dataset.e); screenDone();
+  }));
+  row.appendChild(btn("Skip","",()=>{state.brand=[];screenDone();}));
+  c.appendChild(row); app.appendChild(c);
+}
+function addDrag(row,list){
+  row.addEventListener("dragstart",()=>row.classList.add("drag"));
+  row.addEventListener("dragend",()=>row.classList.remove("drag"));
+  list.addEventListener("dragover",e=>{
+    e.preventDefault();
+    const after=[...list.querySelectorAll(".rankrow:not(.drag)")].find(c=>{
+      const r=c.getBoundingClientRect();return e.clientY<=r.top+r.height/2;});
+    const dragging=list.querySelector(".drag");
+    if(!dragging)return;
+    after?list.insertBefore(dragging,after):list.appendChild(dragging);
+  });
+}
+
+// ----------------------------------------------------------------------------
+// ranking from pairwise choices (Bradley-Terry, MM algorithm) + Kendall tau
+// ----------------------------------------------------------------------------
+function bradleyTerry(responses){
+  const ents=Object.keys(DISPLAY);
+  const W={},N={},games={},wins={};
+  ents.forEach(e=>{W[e]=0;games[e]=0;wins[e]=0;});
+  const key=(a,b)=>a+"|"+b;
+  for(const r of responses){
+    const a=r.leftEntity,b=r.rightEntity;
+    N[key(a,b)]=(N[key(a,b)]||0)+1; N[key(b,a)]=(N[key(b,a)]||0)+1;
+    games[a]++; games[b]++;
+    if(r.choice==="left"){W[a]++;wins[a]++;}
+    else if(r.choice==="right"){W[b]++;wins[b]++;}
+    else {W[a]+=.5;W[b]+=.5;wins[a]+=.5;wins[b]+=.5;}
+  }
+  let p={}; ents.forEach(e=>p[e]=1);
+  for(let it=0;it<300;it++){
+    const np={};
+    for(const i of ents){
+      let den=0;
+      for(const j of ents){const n=N[key(i,j)]||0; if(n)den+=n/(p[i]+p[j]);}
+      np[i]=den>0?W[i]/den:p[i];
+    }
+    let logsum=0; ents.forEach(e=>logsum+=Math.log(Math.max(np[e],1e-9)));
+    const g=Math.exp(logsum/ents.length);
+    ents.forEach(e=>p[e]=np[e]/g);
+  }
+  const order=[...ents].filter(e=>games[e]>0).sort((a,b)=>p[b]-p[a]);
+  // entities with no games appended at the end
+  ents.filter(e=>games[e]===0).forEach(e=>order.push(e));
+  return {order,strength:p,games,wins};
+}
+function kendallTau(orderA,orderB){
+  const ents=orderA.filter(e=>orderB.includes(e));
+  const ra={},rb={}; orderA.forEach((e,i)=>ra[e]=i); orderB.forEach((e,i)=>rb[e]=i);
+  let c=0,d=0;
+  for(let i=0;i<ents.length;i++)for(let j=i+1;j<ents.length;j++){
+    const s=(ra[ents[i]]-ra[ents[j]])*(rb[ents[i]]-rb[ents[j]]);
+    if(s>0)c++; else if(s<0)d++;
+  }
+  return (c+d)?(c-d)/(c+d):0;
+}
+function rankBars(order,opts){
+  opts=opts||{};
+  const box=el("div","rank");
+  const n=order.length;
+  order.forEach((e,i)=>{
+    const row=el("div","rbar"+(e==="human"?" hu":""));
+    const w=opts.values?opts.values[e]:(n-i)/n;             // 0..1
+    const pct=Math.max(6,Math.round(100*w));
+    const col=e==="human"?"#e0792b":"#2f6fed";
+    row.innerHTML=`<div class="pos">${i+1}</div><div class="nm">${DISPLAY[e]}${STAR[e]||""}</div>
+      <div class="track"><div class="fill" style="width:${pct}%;background:${col}"></div></div>`;
+    box.appendChild(row);
+  });
+  return box;
+}
+
+// ----------------------------------------------------------------------------
+// done + results + export
+// ----------------------------------------------------------------------------
+// Save results to the configured backend.
+async function submitData(out){
+  const body=JSON.stringify(out);
+  // Preferred: DataPipe -> OSF (CORS-enabled, so we get a real success/failure)
+  if(CONFIG.dataPipeID){
+    const filename=`${(out.subjectId||"anon").replace(/[^A-Za-z0-9_-]/g,"")}_${Date.now()}.json`;
+    try{
+      const res=await fetch("https://pipe.jspsych.org/api/data/",{
+        method:"POST", headers:{"Content-Type":"application/json","Accept":"*/*"},
+        body:JSON.stringify({experimentID:CONFIG.dataPipeID, filename, data:body})
+      });
+      return res.ok ? {ok:true} : {ok:false, reason:"DataPipe HTTP "+res.status};
+    }catch(e){ return {ok:false, reason:String(e)}; }
+  }
+  // Alternative: generic endpoint (e.g., Google Apps Script) — fire-and-forget fallback
+  if(CONFIG.dataEndpoint){
+    try{ const r=await fetch(CONFIG.dataEndpoint,{method:"POST",
+        headers:{"Content-Type":"text/plain;charset=utf-8"}, body}); if(r.ok) return {ok:true}; }catch(e){}
+    try{ await fetch(CONFIG.dataEndpoint,{method:"POST",mode:"no-cors",body}); return {ok:true,opaque:true}; }
+    catch(e){ return {ok:false, reason:String(e)}; }
+  }
+  return {ok:false, reason:"no endpoint configured"};
+}
+
+function computeQuality(){
+  const r=state.responses, wall=Math.round(performance.now()-state.tStart);
+  const active=r.reduce((s,x)=>s+Math.min(x.rt_ms,CONFIG.idleTrialMs),0);
+  const fast=r.filter(x=>x.fast).length, idle=r.filter(x=>x.idle).length;
+  const attnPass=state.attn.filter(a=>a.pass).length;
+  const med=(a=>{a=a.slice().sort((x,y)=>x-y);return a.length?a[Math.floor(a.length/2)]:0;})(r.map(x=>x.rt_ms));
+  // test-retest consistency on planned repeated pairs (side-independent: compare chosenEntity)
+  const key=x=>x.task+"|"+[x.leftEntity,x.rightEntity].sort().join("_");
+  const reps=r.filter(x=>x.repeat); let agree=0;
+  reps.forEach(rp=>{const o=r.find(x=>!x.repeat&&key(x)===key(rp));
+                    if(o && o.chosenEntity===rp.chosenEntity) agree++;});
+  const q=Object.assign({}, state.quality, {
+    wallTimeMs:wall, activeTimeMs:active, idleTimeMs:Math.max(0,wall-active),
+    hiddenMs:Math.round(state.hiddenMs), blurCount:state.blurCount,
+    medianRT_ms:med, fastResponses:fast, idleResponses:idle,
+    attentionPassed:attnPass, attentionTotal:state.attn.length,
+    repeatPairs:reps.length, repeatConsistency: reps.length?+(agree/reps.length).toFixed(2):null
+  });
+  // overall flag: failed attention, careless speed, straight-lining, low repeat-consistency, or excessive away-time
+  q.flagged = (q.attentionTotal>0 && q.attentionPassed<q.attentionTotal)
+            || q.dospertAttentionPass===false || q.dospertStraightlining===true
+            || (r.length>0 && fast/r.length>0.5)
+            || (q.repeatConsistency!==null && q.repeatPairs>=4 && q.repeatConsistency<0.5)
+            || q.hiddenMs>120000;
+  return q;
+}
+
+function screenDone(){
+  app.innerHTML="";
+  const bt=bradleyTerry(state.responses);
+  const tau=kendallTau(bt.order,PAPER_RANK).toFixed(2);
+  const quality=computeQuality();
+  const out={
+    subjectId:state.subjectId, prolific:state.prolific, demographics:state.demographics,
+    timestamp:new Date().toISOString(), config:CONFIG, quality,
+    attentionChecks:state.attn,
+    n_comparisons:state.responses.length, responses:state.responses,
+    perceivedRanking:bt.order, perceivedStrength:bt.strength,
+    kendallTau_vs_paperAUC:Number(tau),
+    brandRanking:state.brand, paperAUCRanking:PAPER_RANK, entityKeyToName:DISPLAY
+  };
+  const blob=JSON.stringify(out,null,2);
+
+  const head=el("div","card");
+  head.innerHTML=`<h2>Thank you! 🎉</h2>
+    <p>You completed <b>${state.responses.length}</b> comparisons. Your completion code and the
+       return-to-Prolific button will appear once your data has finished saving.</p>`;
+  app.appendChild(head);
+
+  // your ranking vs paper AUC ranking, side by side
+  const cmp=el("div","card");
+  cmp.innerHTML=`<h3>Risk-taking ranking: your perception vs. the model (AUC) reference</h3>
+    <p class="mut">Top = most risk-taking, bottom = most cautious. <b>Kendall&nbsp;τ = ${tau}</b>
+     (+1 identical order, 0 unrelated, −1 reversed). “Human” is highlighted in orange.</p>`;
+  const two=el("div","twocol");
+  const left=el("div"); left.innerHTML=`<div class="legend"><b>Your perception</b> (from your pairwise choices)</div>`;
+  left.appendChild(rankBars(bt.order));
+  const right=el("div"); right.innerHTML=`<div class="legend"><b>Paper's AUC method</b> (Fig. 5a)</div>`;
+  right.appendChild(rankBars(PAPER_RANK));
+  two.appendChild(left); two.appendChild(right);
+  cmp.appendChild(two);
+  cmp.insertAdjacentHTML("beforeend",
+    `<p class="legend">* Grok-4 failed the upstream intra-consistency check in the paper.</p>`);
+  app.appendChild(cmp);
+
+  // brand-impression ranking
+  if(state.brand && state.brand.length){
+    const bc=el("div","card");
+    bc.innerHTML=`<h3>Your brand-impression ranking</h3>
+      <p class="mut">Based on your general impression of the named models (not the behavior you saw).
+       Top = most risk-taking.</p>`;
+    bc.appendChild(rankBars(state.brand));
+    app.appendChild(bc);
+  }
+
+  // download backup (kept available under the results)
+  const ex=el("div","card");
+  ex.innerHTML=`<h3>Backup copy</h3><p class="mut">Optional: keep a local copy of your data.</p>`;
+  const downloadResults=()=>{const a=document.createElement("a");
+    a.href=URL.createObjectURL(new Blob([blob],{type:"application/json"}));
+    a.download=`ranking_${state.subjectId}_${Date.now()}.json`; a.click();};
+  const row=el("div","row");
+  row.appendChild(btn("⬇ Download results (JSON)","",downloadResults));
+  row.appendChild(btn("Copy to clipboard","",()=>navigator.clipboard.writeText(blob)));
+  ex.appendChild(row); app.appendChild(ex);
+
+  // ---- blocking save overlay: cannot be closed until data is saved ----
+  state.onDone=true; state.saved=false;
+  const ccBtn=`<a class="primary" style="display:inline-block;text-decoration:none;margin:6px 6px 0 0"
+      href="${CONFIG.completionBaseURL}${encodeURIComponent(CONFIG.completionCode)}">Return to Prolific &amp; submit ▶</a>`;
+  const ov=el("div","overlay"); const md=el("div","modal"); ov.appendChild(md); document.body.appendChild(ov);
+  const savingHTML=`<div class="spinner"></div><h3>Saving your data…</h3>
+    <p class="mut">Please do <b>not</b> close or refresh this window until saving is complete.</p>`;
+  const onOk=()=>{ state.saved=true;
+    md.innerHTML=`<div style="font-size:42px">✅</div><h3>Saved successfully</h3>
+      <p>You can now return to Prolific and submit.</p>
+      <div class="cc">${CONFIG.completionCode}</div><div>${ccBtn}</div>`;
+    md.appendChild(btn("Close this message","",()=>ov.remove()));
+  };
+  const onFail=(reason)=>{
+    md.innerHTML=`<div style="font-size:42px">⚠️</div><h3>Auto-save failed</h3>
+      <p>Please <b>download your data</b> below and upload it as instructed — you will still be paid.
+         You can also retry saving.</p>
+      <p class="mut" style="font-size:12px">(${reason||"network error"})</p>
+      <div class="cc">${CONFIG.completionCode}</div><div>${ccBtn}</div>`;
+    md.appendChild(btn("⬇ Download results (JSON)","primary",downloadResults));
+    md.appendChild(btn("Retry save","",()=>{ md.innerHTML=savingHTML; doSave(); }));
+    md.appendChild(btn("I've downloaded it — close","",()=>{ state.saved=true; ov.remove(); }));
+  };
+  function doSave(){
+    if(!(CONFIG.dataPipeID||CONFIG.dataEndpoint)){
+      state.saved=true;
+      md.innerHTML=`<h3>Done</h3><p>No server configured — please download your data and send it to us.</p>
+        <div class="cc">${CONFIG.completionCode}</div><div>${ccBtn}</div>`;
+      md.appendChild(btn("⬇ Download results (JSON)","primary",downloadResults));
+      md.appendChild(btn("Close","",()=>ov.remove())); return;
+    }
+    submitData(out).then(r=> r.ok ? onOk() : onFail(r.reason));
+  }
+  md.innerHTML=savingHTML; doSave();
+}
+
+// ----------------------------------------------------------------------------
+if(!S){app.innerHTML='<div class="card">Could not load <code>stimuli.js</code>. Run build_stimuli.py first.</div>';}
+else screenConsent();
+</script>
+</body>
+</html>
