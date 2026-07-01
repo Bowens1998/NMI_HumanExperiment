@@ -151,34 +151,58 @@ def main():
     print(f"Kendall tau (aggregate vs paper) = {tau:+.2f}")
     print(f"Kendall's W across the 3 task rankings (rank stability) = {W:.2f}")
 
-    # ---- figure ----
-    ntask = len(per)
-    fig = plt.figure(figsize=(13, 6.2))
-    gs = fig.add_gridspec(1, 1 + ntask, width_ratios=[1.5] + [1] * ntask, wspace=0.55)
-    ax0 = fig.add_subplot(gs[0, 0])
-    slopegraph(ax0, order, PAPER_OVERALL, "Human\n(mean rank)", "Paper\nAUC",
-               f"Aggregate ranking   (τ={tau:+.2f}, W={W:.2f})")
+    # ---- figure: clean rank heatmap (entity x [AUC | Human] per block) ----
+    tlabel = {"DSB": "DNC", "TPB": "CTD", "FIP": "FIP"}
+    blocks = [("Aggregate", PAPER_OVERALL, order, tau, W)]
+    for task in ("DSB", "TPB", "FIP"):
+        if task in per:
+            o, _, ncmp, t = per[task]
+            blocks.append((tlabel.get(task, task), PAPER_PERTASK.get(task), o, t, None))
 
-    for i, (task, (o, played, ncmp, t)) in enumerate(per.items(), start=1):
-        ax = fig.add_subplot(gs[0, i])
-        if PAPER_PERTASK.get(task):
-            slopegraph(ax, o, PAPER_PERTASK[task], "You", "AUC",
-                       f"{task}  (n={ncmp}, τ={t:+.2f})")
-        else:
-            n = len(ENTITIES)
-            for e in played:
-                y = n - o.index(e)
-                hu = e == "human"
-                ax.plot(0, y, "o", color="#e0792b" if hu else "#2f6fed", ms=8)
-                ax.text(0.12, y, f"{o.index(e)+1}. {DISPLAY[e]}{STAR.get(e,'')}",
-                        va="center", fontsize=10, fontweight="bold" if hu else "normal")
-            ax.set_xlim(-0.3, 2.2); ax.set_ylim(0.4, n + 0.6)
-            ax.set_xticks([]); ax.set_yticks([])
-            for s in ("top", "right", "left", "bottom"): ax.spines[s].set_visible(False)
-            ax.set_title(f"{task}: your perception\n(n={ncmp}; paper not set)", fontsize=11)
+    row_order = list(PAPER_OVERALL)                       # y-axis: AUC-aggregate order (most->least risk-taking)
+    cols = []                                             # (block, kind, ordering)
+    for name, auc, hum, *_ in blocks:
+        if auc: cols.append((name, "AUC", auc))
+        cols.append((name, "Human", hum))
+    nR, nC = len(row_order), len(cols)
+    M = [[cols[j][2].index(e) + 1 if e in cols[j][2] else None for j in range(nC)] for e in row_order]
 
-    fig.suptitle("Human-perceived risk-taking ranking vs. paper AUC ranking",
-                 fontsize=15, fontweight="bold")
+    import matplotlib.cm as cm
+    from matplotlib.colors import Normalize
+    norm = Normalize(1, nR); cmap = cm.get_cmap("RdYlBu")   # rank1(risk-taking)=red ... rank7(averse)=blue
+    fig, ax = plt.subplots(figsize=(1.15 * nC + 2.2, 0.62 * nR + 2))
+    for i in range(nR):
+        for j in range(nC):
+            v = M[i][j]
+            ax.add_patch(plt.Rectangle((j, nR - 1 - i), 1, 1,
+                         facecolor=(cmap(norm(v)) if v else "#f2f2f2"), edgecolor="white", lw=2))
+            if v:
+                ax.text(j + .5, nR - 1 - i + .5, str(v), ha="center", va="center",
+                        fontsize=12, fontweight="bold",
+                        color="white" if (v <= 2 or v >= nR - 1) else "#222")
+    ax.set_xlim(0, nC); ax.set_ylim(0, nR)
+    # y labels (entities), Human highlighted
+    ax.set_yticks([nR - 1 - i + .5 for i in range(nR)])
+    ax.set_yticklabels([DISPLAY[e] + STAR.get(e, "") for e in row_order], fontsize=11)
+    for lbl, e in zip(ax.get_yticklabels(), row_order):
+        if e == "human": lbl.set_color("#b14b13"); lbl.set_fontweight("bold")
+    # x labels (AUC / Human) + block headers on top
+    ax.set_xticks([j + .5 for j in range(nC)])
+    ax.set_xticklabels([k for _, k, _ in cols], fontsize=10)
+    ax.xaxis.set_ticks_position("none"); ax.yaxis.set_ticks_position("none")
+    for s in ax.spines.values(): s.set_visible(False)
+    # block header text + tau/W
+    j = 0
+    for name, auc, hum, t, w in blocks:
+        span = (2 if auc else 1)
+        hdr = name + (f"\nτ={t:+.2f}" if t is not None else "")
+        if w is not None: hdr += f", W={w:.2f}"
+        ax.text(j + span / 2, nR + .18, hdr, ha="center", va="bottom", fontsize=11, fontweight="bold")
+        j += span
+    ax.text(nC/2, -0.9, "cell = rank (1 = most risk-taking … %d = most risk-averse)  ·  red→blue = risk-taking→averse"
+            % nR, ha="center", fontsize=9, color="#666")
+    fig.suptitle("Human-perceived vs. AUC risk-taking rank  (per task & aggregate)",
+                 fontsize=14, fontweight="bold", y=1.06)
     out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ranking_comparison.png")
     fig.savefig(out, dpi=150, bbox_inches="tight")
     print(f"\nSaved {out}")

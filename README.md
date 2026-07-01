@@ -9,24 +9,34 @@ humans integrate behavior holistically (consequence salience, no B_C
 normalization).
 
 ## Files
-- `build_stimuli.py` — samples difficulty-matched representative trials → `stimuli.json` / `stimuli.js` / `build_report.txt`
 - `index.html` — the data-collection webpage (open directly in a browser; reads `stimuli.js`)
-- `stimuli.js` — generated stimulus set as `window.STIMULI`
+- `stimuli.js` / `stimuli.json` — generated stimulus set (`window.STIMULI`)
+- `build_stimuli.py` — samples the per-entity trial pools → `stimuli.js/json` + `build_report.txt`
+- `analyze_ranking.py` — Bradley-Terry ranking (per-task + aggregate) vs AUC → `ranking_comparison.png`
+- `power_analysis.py` — simulation-based power curves → `power_analysis.png`
+- `PREREGISTRATION.md` — OSF-ready confirmatory analysis plan
+- `backend_google_apps_script.gs` — optional Google Sheets backend (alternative to DataPipe)
+- `results/` — drop participant JSONs here for `analyze_ranking.py`
 
 ## How to run
 1. `python build_stimuli.py`  (regenerates stimuli from the raw data)
-2. Open `index.html` in a browser. Flow: consent → ID → questionnaire → comparisons → (brand) → results.
+2. Open `index.html` in a browser. Flow: consent → (auto ID) → questionnaire → comparisons →
+   confidence item → (brand ranking) → blocking save → results. Append `?demo=1` for a fast preview.
 
 ## Prolific launch checklist
-- [ ] **Backend:** create a Google Sheet → Apps Script → paste `backend_google_apps_script.gs` → deploy as
-      Web app (Execute as: Me; Access: Anyone) → put the URL in `CONFIG.dataEndpoint`. (Data auto-submits at
-      the end; manual download remains as a backup. Alternative: DataPipe `pipe.jspsych.org` → OSF.)
-- [ ] Set `CONFIG.completionCode` to your study's completion code.
+- [ ] **Backend = DataPipe → OSF** (chosen): set `CONFIG.dataPipeID` to your DataPipe experiment ID and turn
+      **off** DataPipe "Enable data validation" (our data is a custom JSON object, not jsPsych rows).
+      Data auto-submits at the end and the save is CORS-confirmed. (Google Apps Script via `CONFIG.dataEndpoint`
+      + `backend_google_apps_script.gs` remains as a fire-and-forget alternative.)
+- [ ] Set `CONFIG.completionCode` to your Prolific study's completion code (until then it shows the `CHANGEME-CC` placeholder).
 - [ ] Fill the IRB protocol # / PI on the consent screen (`screenConsent`).
 - [ ] Host the folder on **GitHub Pages** (or Netlify) so `index.html` + `stimuli.js` load over https;
       give Prolific the URL `https://<user>.github.io/<repo>/?PROLIFIC_PID={{%PROLIFIC_PID%}}&STUDY_ID={{%STUDY_ID%}}&SESSION_ID={{%SESSION_ID%}}`.
-- [ ] Prolific URL params are captured automatically (PID prefilled, returned in the data).
-- [ ] Pilot ~10, re-estimate choice consistency, re-run `power_analysis.py`, then finalize N (~150 recruited).
+- [ ] **Unique IDs:** no manual entry — `subjectId` = the URL `PROLIFIC_PID` (real participants) or an
+      auto-generated `anon_*` id (local testing). This removes the duplicate-ID problem.
+- [ ] **Pilot first** (see `PREREGISTRATION.md`): ~5–8 friends (usability) then ~20–25 on Prolific to verify
+      an aggregate signal is reproducible + calibrate QC/timing; keep pilot data OUT of the confirmatory sample.
+      Then re-run `power_analysis.py` and finalize N (~150 recruited / ~120 analyzed).
 
 ## Risk-attitude measures collected
 - **DOSPERT-R (30 items)** — validated, standard, **scored unchanged** (overall + 5 domain means). Domains map
@@ -39,13 +49,29 @@ normalization).
 ## Quality control (built in)
 - **Attention checks:** `CONFIG.attentionChecks` instructed-response comparison trials ("click Agent ①") +
   one directed DOSPERT item ("select 4"). Pass/fail recorded.
-- **Careless-speed guard:** choice buttons disabled for `CONFIG.minChoiceMs`; responses faster than
-  `CONFIG.fastFlagMs` are flagged.
-- **Idle / time-inflation:** per-trial RT, tab-hidden time + blur count, and active-vs-wall time recorded
-  (a trial > `CONFIG.idleTrialMs` is marked idle). `beforeunload` warns against accidental exit.
-- **Straight-lining:** DOSPERT zero/near-zero variance flagged.
+- **Careless-speed guard:** choice buttons stay disabled for `CONFIG.minChoiceMs` (default **2500 ms**, so
+  raters must actually view the examples); a response is flagged `fast` if it lands within
+  `CONFIG.fastGraceMs` (default 600 ms) of the buttons unlocking.
+- **Test–retest consistency:** `CONFIG.repeatFraction` of comparisons are re-shown later (side re-randomised);
+  `quality.repeatConsistency` = fraction answered the same way (side-independent).
+- **Idle / disengagement:** per-trial RT (a trial > `CONFIG.idleTrialMs` is `idle`); **tab-hidden time + blur
+  count are scoped to the comparison task only** (from `state.tStart`), so `hiddenMs` can never exceed task
+  wall-time and isn't inflated by idling during consent/questionnaire. Active-vs-wall time also recorded.
+  `beforeunload` warns against accidental exit, including on the results page until the save has completed.
+- **Straight-lining:** DOSPERT near-zero variance flagged.
+- **Metacognition:** one post-task confidence item (`taskConfidence`, 0–10) → enables a confidence × actual-
+  consistency gap analysis.
+- **Blocking save:** the results screen shows a non-dismissable "Saving…" overlay; the completion code +
+  return-to-Prolific button appear only after the save succeeds (prevents exit before data is stored).
 - **Quality summary** (`quality` in the export) bundles all of the above and sets a single
   `quality.flagged` boolean for easy exclusion.
+
+## Analysis & pre-registration
+- `analyze_ranking.py` → per-task + aggregate Bradley-Terry rankings, Kendall τ vs the per-task/overall AUC
+  rankings (`PAPER_PERTASK` / `PAPER_OVERALL`, filled), Kendall's W, and a clean rank heatmap `ranking_comparison.png`.
+- `power_analysis.py` → simulation power curves (group ranking recovery + demographic-moderation regression).
+- `PREREGISTRATION.md` → OSF-ready plan: confirmatory H1–H4 (H4 two-sided), exclusions, sample size,
+  and the exploratory list. Pilot data is calibration-only and excluded from the confirmatory sample.
 
 Tune the session at the top of `index.html` → `CONFIG`:
 `tasks`, `maxComparisons` (0 = all 189), `allowEqual`, `doBrandRanking`.
@@ -83,8 +109,10 @@ Tune the session at the top of `index.html` → `CONFIG`:
   risk. Glossary explains ESI 1–5 (resuscitation → non-urgent).
 
 ## Results screen + analysis
-- The webpage computes the participant's Bradley-Terry ranking and shows it vs the paper AUC ranking + Kendall τ,
-  plus the brand-impression ranking.
+- The participant-facing results screen shows **only the participant's own ranking**, framed neutrally
+  ("no right answer"). The **AUC benchmark and Kendall τ are deliberately NOT shown to participants**
+  (avoids implying humans are "wrong" / anthropocentric-bias critique); they are still stored in the
+  exported data (`kendallTau_vs_paperAUC`, `paperAUCRanking`) for researcher analysis only.
 - `analyze_ranking.py` mirrors the paper's structure: a **Bradley-Terry ranking per task** (DSB/TPB/FIP),
   then an **aggregate by mean per-task rank**, plus **Kendall's W** (cross-task rank stability) and **Kendall τ**
   vs the AUC ranking → `ranking_comparison.png`. Fill `PAPER_PERTASK` with the three per-task AUC orderings

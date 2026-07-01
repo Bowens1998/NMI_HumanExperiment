@@ -193,10 +193,15 @@ const state = { subjectId:"", demographics:null, plan:[], idx:0, responses:[], b
   // authoritative unique ID: Prolific PID if present, else an auto-generated test ID (no manual entry = no duplicates)
   state.subjectId = state.prolific.pid || ("anon_"+Math.random().toString(36).slice(2,8)+"_"+Date.now().toString(36));
   if(q.get("demo")){ CONFIG.comparisonsPerTask=2; CONFIG.attentionChecks=0; CONFIG.minChoiceMs=200; }  // fast preview only
+  // tab-hidden time, scoped to the comparison task only (from state.tStart), so it can never
+  // exceed task wall-time and isn't inflated by idling during consent/questionnaire.
   let hiddenAt=null;
   document.addEventListener("visibilitychange",()=>{
-    if(document.hidden){hiddenAt=performance.now();state.blurCount++;}
-    else if(hiddenAt!=null){state.hiddenMs+=performance.now()-hiddenAt;hiddenAt=null;}
+    if(document.hidden){hiddenAt=performance.now(); if(state.tStart) state.blurCount++;}
+    else if(hiddenAt!=null){
+      if(state.tStart) state.hiddenMs += performance.now()-Math.max(hiddenAt, state.tStart);
+      hiddenAt=null;
+    }
   });
   window.addEventListener("beforeunload",(e)=>{
     const midTask = state.idx>0 && state.idx<state.plan.length;
@@ -475,8 +480,29 @@ function screenDemographics(){
   };
 }
 
-function afterCompare(){
-  return CONFIG.doBrandRanking ? screenBrand() : screenDone();
+function afterCompare(){ return screenConfidence(); }
+
+// post-task metacognition: one confidence item about the agent judgments just made
+function screenConfidence(){
+  app.innerHTML="";
+  const c=el("div","card");
+  c.innerHTML=`<h2>One last question</h2>
+    <p>Thinking about the agent comparisons you just completed:</p>
+    <p style="font-size:18px"><b>How confident are you that your judgments correctly captured
+       how risk-taking each agent is?</b></p>
+    <div class="row" style="gap:12px">
+      <span class="mut">not at all confident</span>
+      <input id="conf" type="range" min="0" max="10" value="5" style="width:340px"
+        oninput="document.getElementById('conf_v').textContent=this.value"/>
+      <span class="mut">completely confident</span>
+      <b id="conf_v" style="font-size:18px">5</b></div>
+    <div class="row" style="margin-top:16px"><button class="primary" id="cnext">Continue</button></div>`;
+  app.appendChild(c);
+  document.getElementById("cnext").onclick=()=>{
+    state.confidence=Number(document.getElementById("conf").value);
+    window.scrollTo(0,0);
+    CONFIG.doBrandRanking ? screenBrand() : screenDone();
+  };
 }
 function screenCompare(){
   const c=state.plan[state.idx];
@@ -786,7 +812,7 @@ function rankBars(order,opts){
     const w=opts.values?opts.values[e]:(n-i)/n;             // 0..1
     const pct=Math.max(6,Math.round(100*w));
     const col=e==="human"?"#e0792b":"#2f6fed";
-    row.innerHTML=`<div class="pos">${i+1}</div><div class="nm">${DISPLAY[e]}${STAR[e]||""}</div>
+    row.innerHTML=`<div class="pos">${i+1}</div><div class="nm">${DISPLAY[e]}${opts.noStar?"":(STAR[e]||"")}</div>
       <div class="track"><div class="fill" style="width:${pct}%;background:${col}"></div></div>`;
     box.appendChild(row);
   });
@@ -857,6 +883,7 @@ function screenDone(){
     timestamp:new Date().toISOString(), config:CONFIG, quality,
     attentionChecks:state.attn,
     n_comparisons:state.responses.length, responses:state.responses,
+    taskConfidence:(state.confidence!==undefined?state.confidence:null),
     perceivedRanking:bt.order, perceivedStrength:bt.strength,
     kendallTau_vs_paperAUC:Number(tau),
     brandRanking:state.brand, paperAUCRanking:PAPER_RANK, entityKeyToName:DISPLAY
@@ -869,31 +896,13 @@ function screenDone(){
        return-to-Prolific button will appear once your data has finished saving.</p>`;
   app.appendChild(head);
 
-  // your ranking vs paper AUC ranking, side by side
+  // the participant's OWN ranking only (neutral; no "correct answer" / AUC benchmark shown)
   const cmp=el("div","card");
-  cmp.innerHTML=`<h3>Risk-taking ranking: your perception vs. the model (AUC) reference</h3>
-    <p class="mut">Top = most risk-taking, bottom = most cautious. <b>Kendall&nbsp;τ = ${tau}</b>
-     (+1 identical order, 0 unrelated, −1 reversed). “Human” is highlighted in orange.</p>`;
-  const two=el("div","twocol");
-  const left=el("div"); left.innerHTML=`<div class="legend"><b>Your perception</b> (from your pairwise choices)</div>`;
-  left.appendChild(rankBars(bt.order));
-  const right=el("div"); right.innerHTML=`<div class="legend"><b>Paper's AUC method</b> (Fig. 5a)</div>`;
-  right.appendChild(rankBars(PAPER_RANK));
-  two.appendChild(left); two.appendChild(right);
-  cmp.appendChild(two);
-  cmp.insertAdjacentHTML("beforeend",
-    `<p class="legend">* Grok-4 failed the upstream intra-consistency check in the paper.</p>`);
+  cmp.innerHTML=`<h3>How you ranked the agents</h3>
+    <p class="mut">From your pairwise choices — top = the agent you saw as most risk-taking,
+     bottom = most cautious. There is no right answer; this is simply your impression.</p>`;
+  cmp.appendChild(rankBars(bt.order, {noStar:true}));
   app.appendChild(cmp);
-
-  // brand-impression ranking
-  if(state.brand && state.brand.length){
-    const bc=el("div","card");
-    bc.innerHTML=`<h3>Your brand-impression ranking</h3>
-      <p class="mut">Based on your general impression of the named models (not the behavior you saw).
-       Top = most risk-taking.</p>`;
-    bc.appendChild(rankBars(state.brand));
-    app.appendChild(bc);
-  }
 
   // download backup (kept available under the results)
   const ex=el("div","card");
