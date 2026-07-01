@@ -70,7 +70,7 @@
   .att-banner{background:#fff4e6;border:1px solid #f0c890;border-radius:8px;padding:8px 12px;margin:8px 0;font-weight:600;color:#9a5b18}
   /* results */
   .rank{display:flex;flex-direction:column;gap:8px;margin-top:10px}
-  .rbar{display:grid;grid-template-columns:30px 200px 1fr;align-items:center;gap:12px;font-size:15px}
+  .rbar{display:grid;grid-template-columns:30px 300px 1fr;align-items:center;gap:12px;font-size:15px}
   .rbar .pos{font-weight:700;color:var(--mut);text-align:right}
   .rbar .nm{font-weight:600}
   .rbar .track{background:#eef1f6;border-radius:6px;height:22px;position:relative;overflow:hidden}
@@ -177,6 +177,18 @@ const TASK_INFO = {
 const PAPER_RANK = ["gpt","human","qwen","gemini","deepseek","sonnet","grok"];
 // Grok-4 failed the upstream intra-consistency check -> shown with an asterisk.
 const STAR = {grok:" *"};
+
+// developer company + country (shown post-task only, never during the blind comparisons)
+const META = {
+  deepseek:{company:"DeepSeek", country:"China"},
+  gemini:  {company:"Google",   country:"USA"},
+  gpt:     {company:"OpenAI",   country:"USA"},
+  grok:    {company:"xAI",      country:"USA"},
+  qwen:    {company:"Alibaba",  country:"China"},
+  sonnet:  {company:"Anthropic",country:"USA"},
+  human:   null,
+};
+function nameMeta(e){ const m=META[e]; return DISPLAY[e] + (m ? ` — ${m.company} (${m.country})` : ""); }
 
 const S = window.STIMULI;
 const DISPLAY = S.meta.entities;
@@ -736,7 +748,8 @@ function screenBrand(){
   const ents=shuffle(Object.keys(DISPLAY).filter(e=>e!=="human"));
   ents.forEach(e=>{
     const r=el("div","rankrow"); r.draggable=true; r.dataset.e=e;
-    r.innerHTML=`<span class="h">⠿</span><span>${DISPLAY[e]}</span>`;
+    const m=META[e];
+    r.innerHTML=`<span class="h">⠿</span><span><b>${DISPLAY[e]}</b>${m?` <span class="mut">— ${m.company} (${m.country})</span>`:""}</span>`;
     addDrag(r,list); list.appendChild(r);
   });
   c.appendChild(list);
@@ -812,7 +825,8 @@ function rankBars(order,opts){
     const w=opts.values?opts.values[e]:(n-i)/n;             // 0..1
     const pct=Math.max(6,Math.round(100*w));
     const col=e==="human"?"#e0792b":"#2f6fed";
-    row.innerHTML=`<div class="pos">${i+1}</div><div class="nm">${DISPLAY[e]}${opts.noStar?"":(STAR[e]||"")}</div>
+    const nm=(opts.meta?nameMeta(e):DISPLAY[e])+(opts.noStar?"":(STAR[e]||""));
+    row.innerHTML=`<div class="pos">${i+1}</div><div class="nm">${nm}</div>
       <div class="track"><div class="fill" style="width:${pct}%;background:${col}"></div></div>`;
     box.appendChild(row);
   });
@@ -892,16 +906,28 @@ function screenDone(){
 
   const head=el("div","card");
   head.innerHTML=`<h2>Thank you! 🎉</h2>
-    <p>You completed <b>${state.responses.length}</b> comparisons. Your completion code and the
-       return-to-Prolific button will appear once your data has finished saving.</p>`;
+    <p>You completed <b>${state.responses.length}</b> comparisons. The return-to-Prolific button will
+       appear once your data has finished saving.</p>`;
   app.appendChild(head);
 
-  // the participant's OWN ranking only (neutral; no "correct answer" / AUC benchmark shown)
+  // the participant's OWN two rankings, side by side (both their own choices — neutral, no AUC benchmark)
   const cmp=el("div","card");
-  cmp.innerHTML=`<h3>How you ranked the agents</h3>
-    <p class="mut">From your pairwise choices — top = the agent you saw as most risk-taking,
-     bottom = most cautious. There is no right answer; this is simply your impression.</p>`;
-  cmp.appendChild(rankBars(bt.order, {noStar:true}));
+  cmp.innerHTML=`<h3>Your two rankings, compared</h3>
+    <p class="mut">Both are your own — top = most risk-taking, bottom = most cautious. There is no right answer.
+     On the left is what you inferred from watching the agents' <b>behavior</b>; on the right is your
+     <b>prior impression</b> of the named models. Interesting if they differ!</p>`;
+  const two=el("div","twocol");
+  const left=el("div");
+  left.innerHTML=`<div class="legend"><b>From the behavior you saw</b> (your pairwise choices)</div>`;
+  left.appendChild(rankBars(bt.order, {noStar:true, meta:true}));
+  two.appendChild(left);
+  if(state.brand && state.brand.length){
+    const right=el("div");
+    right.innerHTML=`<div class="legend"><b>Your prior impression</b> (the models you dragged)</div>`;
+    right.appendChild(rankBars(state.brand, {noStar:true, meta:true}));
+    two.appendChild(right);
+  }
+  cmp.appendChild(two);
   app.appendChild(cmp);
 
   // download backup (kept available under the results)
@@ -924,8 +950,8 @@ function screenDone(){
     <p class="mut">Please do <b>not</b> close or refresh this window until saving is complete.</p>`;
   const onOk=()=>{ state.saved=true;
     md.innerHTML=`<div style="font-size:42px">✅</div><h3>Saved successfully</h3>
-      <p>You can now return to Prolific and submit.</p>
-      <div class="cc">${CONFIG.completionCode}</div><div>${ccBtn}</div>`;
+      <p>Your responses are recorded. Click below to return to Prolific and submit.</p>
+      <div>${ccBtn}</div>`;
     md.appendChild(btn("Close this message","",()=>ov.remove()));
   };
   const onFail=(reason)=>{
@@ -933,7 +959,7 @@ function screenDone(){
       <p>Please <b>download your data</b> below and upload it as instructed — you will still be paid.
          You can also retry saving.</p>
       <p class="mut" style="font-size:12px">(${reason||"network error"})</p>
-      <div class="cc">${CONFIG.completionCode}</div><div>${ccBtn}</div>`;
+      <div>${ccBtn}</div>`;
     md.appendChild(btn("⬇ Download results (JSON)","primary",downloadResults));
     md.appendChild(btn("Retry save","",()=>{ md.innerHTML=savingHTML; doSave(); }));
     md.appendChild(btn("I've downloaded it — close","",()=>{ state.saved=true; ov.remove(); }));
@@ -942,7 +968,7 @@ function screenDone(){
     if(!(CONFIG.dataPipeID||CONFIG.dataEndpoint)){
       state.saved=true;
       md.innerHTML=`<h3>Done</h3><p>No server configured — please download your data and send it to us.</p>
-        <div class="cc">${CONFIG.completionCode}</div><div>${ccBtn}</div>`;
+        <div>${ccBtn}</div>`;
       md.appendChild(btn("⬇ Download results (JSON)","primary",downloadResults));
       md.appendChild(btn("Close","",()=>ov.remove())); return;
     }
