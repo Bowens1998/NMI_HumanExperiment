@@ -178,17 +178,17 @@ const PAPER_RANK = ["gpt","human","qwen","gemini","deepseek","sonnet","grok"];
 // Grok-4 failed the upstream intra-consistency check -> shown with an asterisk.
 const STAR = {grok:" *"};
 
-// developer company + country (shown post-task only, never during the blind comparisons)
+// developer company (shown post-task only, never during the blind comparisons; no country label)
 const META = {
-  deepseek:{company:"DeepSeek", country:"China"},
-  gemini:  {company:"Google",   country:"USA"},
-  gpt:     {company:"OpenAI",   country:"USA"},
-  grok:    {company:"xAI",      country:"USA"},
-  qwen:    {company:"Alibaba",  country:"China"},
-  sonnet:  {company:"Anthropic",country:"USA"},
+  deepseek:{company:"DeepSeek"},
+  gemini:  {company:"Google"},
+  gpt:     {company:"OpenAI"},
+  grok:    {company:"xAI"},
+  qwen:    {company:"Alibaba"},
+  sonnet:  {company:"Anthropic"},
   human:   null,
 };
-function nameMeta(e){ const m=META[e]; return DISPLAY[e] + (m ? ` — ${m.company} (${m.country})` : ""); }
+function nameMeta(e){ const m=META[e]; return DISPLAY[e] + (m ? ` — ${m.company}` : ""); }  // company only (country not shown to participants)
 
 const S = window.STIMULI;
 const DISPLAY = S.meta.entities;
@@ -749,7 +749,7 @@ function screenBrand(){
   ents.forEach(e=>{
     const r=el("div","rankrow"); r.draggable=true; r.dataset.e=e;
     const m=META[e];
-    r.innerHTML=`<span class="h">⠿</span><span><b>${DISPLAY[e]}</b>${m?` <span class="mut">— ${m.company} (${m.country})</span>`:""}</span>`;
+    r.innerHTML=`<span class="h">⠿</span><span><b>${DISPLAY[e]}</b>${m?` <span class="mut">— ${m.company}</span>`:""}</span>`;
     addDrag(r,list); list.appendChild(r);
   });
   c.appendChild(list);
