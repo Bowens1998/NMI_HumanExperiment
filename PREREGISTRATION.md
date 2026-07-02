@@ -71,6 +71,14 @@ Exclude a participant if ANY of:
 - Projection bias: does DOSPERT predict an overall shift in perceived risk level?
 - Confidence × consistency gap (metacognitive calibration); reaction-time patterns.
 - Whether human ranking is explained by displayed B_C alone (readout confound check).
+- **Country/company prior bias.** Each model's developer company and country are shown ONLY post-task
+  (in the brand-impression drag ranking and the debrief), never during the blind pairwise comparisons.
+  Exploratory questions: (a) does the **brand-impression** ranking cluster by country of origin (e.g., are
+  China-developed models — DeepSeek, Qwen — systematically rated more/less risk-taking than US-developed
+  ones)? (b) does country/company predict the **brand-vs-behavior gap** (do priors about a model's origin
+  diverge more from its observed behavior)? (c) does a rater's own nationality/region (if collected) interact
+  with this? Because origin labels are shown, any such effect reflects a *stated prior*, not behavior-based
+  perception, and is interpreted accordingly.
 
 ## 8. Data & code
 Data collected via DataPipe → OSF (project beq4y / component 7pwm9). Analysis: `analyze_ranking.py`,
