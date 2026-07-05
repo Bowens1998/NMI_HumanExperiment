@@ -75,19 +75,15 @@ def gen_choices(alpha_i, s, C):
 
 # --------------------------------------------------------------------------- #
 def bt_fit(wins, games_pair):
-    """Bradley-Terry MM on aggregated pairwise win counts. wins[i][j]=#times i beat j."""
+    """Bradley-Terry MM on aggregated pairwise win counts (vectorized). wins[i][j]=#times i beat j."""
     n = wins.shape[0]
     p = np.ones(n)
     W = wins.sum(axis=1)
     for _ in range(200):
-        newp = np.zeros(n)
-        for i in range(n):
-            denom = 0.0
-            for j in range(n):
-                nij = games_pair[i, j]
-                if nij:
-                    denom += nij / (p[i] + p[j])
-            newp[i] = W[i] / denom if denom > 0 else p[i]
+        S = games_pair / (p[:, None] + p[None, :])
+        np.fill_diagonal(S, 0.0)
+        denom = S.sum(axis=1)
+        newp = np.where(denom > 0, W / np.where(denom > 0, denom, 1.0), p)
         newp /= np.exp(np.mean(np.log(np.clip(newp, 1e-9, None))))
         p = newp
     return p
@@ -216,5 +212,113 @@ def main():
     print(f"\nSaved {out}")
 
 
+# ======================================================================================
+# SESOI-based design analysis for H1 and H3 (Lakens 2022).
+# Power is computed for a TRUE effect equal to the pre-registered SESOI — NOT the pilot
+# effect size. The pilot is used ONLY to calibrate the nuisance parameter (choice
+# consistency alpha), by matching the pilot's split-half reliability (~0.82 at N=11).
+# ======================================================================================
+from scipy.stats import spearmanr, wilcoxon
+
+def _group_p(mats):
+    W = np.sum(mats, axis=0)
+    return bt_fit(W, W + W.T)
+
+def _reliability(mats, rng):
+    """Split-half reliability (Spearman-Brown corrected) of the group BT strengths."""
+    idx = np.arange(len(mats)); rng.shuffle(idx); h = len(idx) // 2
+    p1 = _group_p([mats[i] for i in idx[:h]]); p2 = _group_p([mats[i] for i in idx[h:]])
+    r = spearmanr(p1, p2).correlation
+    if not np.isfinite(r): r = 0.0
+    return 2 * r / (1 + r) if r < 1 else 1.0
+
+def _sim_wins(N, C, s, alpha, rng, sigma_het=0.0):
+    """Each rater has a personal scale s_i = s + N(0, sigma_het) (between-rater heterogeneity),
+    then makes C noisy pairwise choices (choice consistency alpha)."""
+    n = len(s); mats = []
+    for _ in range(N):
+        si = s + sigma_het * rng.standard_normal(n)
+        a = rng.integers(0, n, C); b = rng.integers(0, n, C); b = np.where(a == b, (b + 1) % n, b)
+        ca = rng.random(C) < 1.0 / (1.0 + np.exp(-alpha * (si[a] - si[b])))
+        win = np.where(ca, a, b); lose = np.where(ca, b, a)
+        w = np.zeros((n, n)); np.add.at(w, (win, lose), 1)
+        mats.append(w)
+    return mats
+
+def _interrater_tau(mats):
+    """Mean pairwise Kendall tau between individual raters' BT rankings."""
+    ps = [bt_fit(m, m + m.T) for m in mats]
+    ts = []
+    for i in range(len(ps)):
+        for j in range(i + 1, len(ps)):
+            ts.append(kendall_tau_order(ps[i], ps[j]))
+    return float(np.mean(ts)) if ts else 0.0
+
+def _human_scale(s_auc, swaps=((1, 2), (4, 5))):
+    """A human latent scale that diverges from AUC at ~the SESOI (Kendall tau ~0.8)."""
+    order = list(np.argsort(-s_auc))                       # AUC order (strongest first)
+    for i, j in swaps: order[i], order[j] = order[j], order[i]
+    s = np.zeros(len(s_auc))
+    vals = np.sort(s_auc)[::-1]
+    for rank, e in enumerate(order): s[e] = vals[rank]
+    return s
+
+def run_h1h3():
+    rng = np.random.default_rng(11)
+    s_auc = latent_scale()
+    s_hum = _human_scale(s_auc)
+    tau_true = kendall_tau_order(s_hum, s_auc)
+    C = 30                                                 # comparisons/rater (10/task x 3)
+    print("=== SESOI-based design analysis (H1, H3) ===")
+    print(f"true human-vs-AUC Kendall tau at the H1 SESOI boundary = {tau_true:+.2f} "
+          f"(=> population D = 1 - tau = {1 - tau_true:.2f} ~ SESOI 0.20)")
+
+    # jointly calibrate (alpha, sigma_het) to BOTH pilot targets at N=11:
+    #   split-half reliability ~ 0.82  AND  mean inter-rater tau ~ 0.15
+    best = None
+    for alpha in [0.8, 1.2, 1.6, 2.0, 2.6, 3.2]:
+        for shet in [0.4, 0.8, 1.2, 1.8, 2.4, 3.0]:
+            R_, T_ = [], []
+            for _ in range(80):
+                m = _sim_wins(11, C, s_hum, alpha, rng, shet)
+                R_.append(_reliability(m, rng)); T_.append(_interrater_tau(m))
+            r, t = np.mean(R_), np.mean(T_)
+            loss = (r - 0.82) ** 2 + (t - 0.15) ** 2
+            if best is None or loss < best[0]: best = (loss, alpha, shet, r, t)
+    _, alpha, shet, r_hat, t_hat = best
+    print(f"calibrated alpha={alpha}, sigma_het={shet}  -> N=11 split-half={r_hat:.2f} (target .82), "
+          f"inter-rater tau={t_hat:+.2f} (target .15)", flush=True)
+
+    # --- H1 power: P(95% bootstrap CI of D excludes 0), D = R_sh - tau(group, AUC) ---
+    for N in (120, 150):
+        R, B, rej = 400, 500, 0
+        for _ in range(R):
+            mats = _sim_wins(N, C, s_hum, alpha, rng, shet)
+            Ds = []
+            for _ in range(B):
+                bs = [mats[i] for i in rng.integers(0, N, N)]
+                D = _reliability(bs, rng) - kendall_tau_order(_group_p(bs), s_auc)
+                Ds.append(D)
+            if np.percentile(Ds, 2.5) > 0: rej += 1
+        print(f"H1 power @ N={N}: {rej / R:.3f}  (test: bootstrap 95% CI of D excludes 0)", flush=True)
+
+    # --- H3 power: one-sided Wilcoxon on per-rater gap g=tau_SC - tau_BB, true median = SESOI ---
+    print("H3 (one-sided Wilcoxon, true median gap = SESOI 0.15; pilot n=6 too small to pin the")
+    print("    per-rater spread, so we sweep plausible SDs):")
+    for N in (120,):
+        for sd in (0.30, 0.40, 0.50):
+            rej = 0; R = 10000
+            for _ in range(R):
+                g = rng.normal(0.15, sd, N)
+                try:
+                    p = wilcoxon(g, alternative="greater").pvalue
+                    if p < 0.05: rej += 1
+                except ValueError:
+                    pass
+            print(f"   N={N}, gap SD={sd}: power = {rej / R:.3f}", flush=True)
+
+
 if __name__ == "__main__":
-    main()
+    import sys
+    if "h1h3" in sys.argv: run_h1h3()
+    else: main()

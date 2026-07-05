@@ -740,10 +740,10 @@ function fmt(v){return (v===null||v===undefined)?"–":v;}
 function screenBrand(){
   app.innerHTML="";
   const c=el("div","card");
-  c.innerHTML=`<h2>Optional: your impression of the named models</h2>
-    <p class="mut">Independent of what you just saw — based on your general impression of these AI models,
-    drag to order them from <b>most risk-taking (top)</b> to <b>most cautious (bottom)</b>.
-    You can skip this.</p>`;
+  c.innerHTML=`<h2>Your impression of the named models</h2>
+    <p>Independent of what you just saw — based on your <b>general impression</b> of these AI models,
+    <b>drag to order all of them</b> from <b>most risk-taking (top)</b> to <b>most cautious (bottom)</b>.
+    Please arrange every model (there is no skip).</p>`;
   const list=el("div"); list.id="brandlist";
   const ents=shuffle(Object.keys(DISPLAY).filter(e=>e!=="human"));
   ents.forEach(e=>{
@@ -757,7 +757,6 @@ function screenBrand(){
   row.appendChild(btn("Submit ranking","primary",()=>{
     state.brand=[...list.children].map(x=>x.dataset.e); screenDone();
   }));
-  row.appendChild(btn("Skip","",()=>{state.brand=[];screenDone();}));
   c.appendChild(row); app.appendChild(c);
 }
 function addDrag(row,list){
