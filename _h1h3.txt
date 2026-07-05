@@ -1,0 +1,3 @@
+=== SESOI-based design analysis (H1, H3) ===
+true human-vs-AUC Kendall tau at the H1 SESOI boundary = +0.81 (=> population D = 1 - tau = 0.19 ~ SESOI 0.20)
+calibrated alpha=0.8, sigma_het=1.2  -> N=11 split-half=0.83 (target .82), inter-rater tau=+0.23 (target .15)

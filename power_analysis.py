@@ -80,12 +80,12 @@ def bt_fit(wins, games_pair):
     p = np.ones(n)
     W = wins.sum(axis=1)
     for _ in range(200):
-        S = games_pair / (p[:, None] + p[None, :])
+        S = games_pair / (p[:, None] + p[None, :])   # p>0 always (floored below) -> no div-by-zero
         np.fill_diagonal(S, 0.0)
         denom = S.sum(axis=1)
         newp = np.where(denom > 0, W / np.where(denom > 0, denom, 1.0), p)
         newp /= np.exp(np.mean(np.log(np.clip(newp, 1e-9, None))))
-        p = newp
+        p = np.clip(newp, 1e-9, None)                 # keep strengths strictly positive
     return p
 
 
